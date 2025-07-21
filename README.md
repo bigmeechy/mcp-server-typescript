@@ -1,13 +1,17 @@
 # DataForSEO MCP Server
 
-Model Context Protocol (MCP) server implementation for DataForSEO, enabling Claude to interact with selected DataForSEO APIs and obtain SEO data through a standardized interface. 
+Model Context Protocol (MCP) server implementation for DataForSEO, enabling AI assistants to interact with selected DataForSEO APIs and obtain SEO data through a standardized interface. 
 
 ## Features
 
-- SERP API: real-time Search Engine Results Page (SERP) data for Google, Bing, and Yahoo;
-- KEYWORDS_DATA API: keyword research and clickstream data, including search volume, cost-per-click, and other metrics;   
-- ONPAGE API: allows crawling websites and webpages according to customizable parameters to obtain on-page SEO performance metrics; 
-- DATAFORSEO_LABS API: data on keywords, SERPs, and domains based on DataForSEO's in-house databases and proprietary algorithms.
+- **SERP API**: real-time Search Engine Results Page (SERP) data for Google, Bing, and Yahoo;
+- **KEYWORDS_DATA API**: keyword research and clickstream data, including search volume, cost-per-click, and other metrics;   
+- **ONPAGE API**: allows crawling websites and webpages according to customizable parameters to obtain on-page SEO performance metrics; 
+- **DATAFORSEO LABS API**: data on keywords, SERPs, and domains based on DataForSEO's in-house databases and proprietary algorithms;
+- **BACKLINKS API**: comprehensive backlink analysis including referring domains, anchor text distribution, and link quality metrics;
+- **BUSINESS DATA API**: publicly available data on any business entity;
+- **DOMAIN ANALYTICS API**: data on website traffic, technologies, and Whois details;
+- **CONTENT ANALYSIS API**: robust source of data for brand monitoring, sentiment analysis, and citation management;
 
 ## Prerequisites
 
@@ -108,6 +112,92 @@ npm run http
    export DATAFORSEO_USERNAME=your_username
    export DATAFORSEO_PASSWORD=your_password
    ```
+
+## Cloudflare Worker Deployment
+
+The DataForSEO MCP Server can be deployed as a Cloudflare Worker for serverless, edge-distributed access to DataForSEO APIs.
+
+### Worker Features
+
+- **Edge Distribution**: Deploy globally across Cloudflare's edge network
+- **Serverless**: No server management required
+- **Auto-scaling**: Handles traffic spikes automatically
+- **MCP Protocol Support**: Compatible with both Streamable HTTP and SSE transports
+- **Environment Variables**: Secure credential management through Cloudflare dashboard
+
+### Quick Start
+
+1. **Install Wrangler CLI**:
+   ```bash
+   npm install -g wrangler
+   ```
+
+2. **Configure Worker**:
+   ```bash
+   # Login to Cloudflare
+   wrangler login
+   
+   # Set environment variables
+   wrangler secret put DATAFORSEO_USERNAME
+   wrangler secret put DATAFORSEO_PASSWORD
+   ```
+
+3. **Deploy Worker**:
+   ```bash
+   # Build and deploy
+   npm run build
+   wrangler deploy --main build/index-worker.js
+   ```
+
+### Configuration
+
+The worker uses the same environment variables as the standard server:
+
+- `DATAFORSEO_USERNAME`: Your DataForSEO username
+- `DATAFORSEO_PASSWORD`: Your DataForSEO password  
+- `ENABLED_MODULES`: Comma-separated list of modules to enable
+- `DATAFORSEO_FULL_RESPONSE`: Set to "true" for full API responses
+
+### Worker Endpoints
+
+Once deployed, your worker will be available at `https://your-worker.your-subdomain.workers.dev/` with the following endpoints:
+
+- **POST /mcp**: Streamable HTTP transport (recommended)
+- **GET /sse**: SSE connection establishment (deprecated)
+- **POST /messages**: SSE message handling (deprecated)
+- **GET /health**: Health check endpoint
+- **GET /**: API documentation page
+
+### Advanced Configuration
+
+Edit `wrangler.jsonc` to customize your deployment:
+
+```jsonc
+{
+  "name": "dataforseo-mcp-worker",
+  "main": "build/index-worker.js",
+  "compatibility_date": "2025-07-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ENABLED_MODULES": "SERP,KEYWORDS_DATA,ONPAGE,DATAFORSEO_LABS"
+  }
+}
+```
+
+### Usage with Claude
+
+After deployment, configure Claude to use your worker:
+
+```json
+{
+  "name": "DataForSEO",
+  "description": "Access DataForSEO APIs via Cloudflare Worker",
+  "transport": {
+    "type": "http",
+    "baseUrl": "https://your-worker.your-subdomain.workers.dev/mcp"
+  }
+}
+```
    
 ## Available Modules
 
@@ -147,7 +237,7 @@ You can either:
 Here's how to add a new tool to any new or pre-existing module:
 
 ```typescript
-// src/modules/your-module/tools/your-tool.tool.ts
+// src/code/modules/your-module/tools/your-tool.tool.ts
 import { BaseTool } from '../../base.tool';
 import { DataForSEOClient } from '../../../client/dataforseo.client';
 import { z } from 'zod';
@@ -219,14 +309,14 @@ export class YourTool extends BaseTool {
 
 ### Creating a New Module
 
-1. Create a new directory under `src/modules/` for your module:
+1. Create a new directory under `src/core/modules/` for your module:
 ```bash
-mkdir -p src/modules/your-module-name
+mkdir -p src/core/modules/your-module-name
 ```
 
 2. Create module files:
 ```typescript
-// src/modules/your-module-name/your-module-name.module.ts
+// src/core/modules/your-module-name/your-module-name.module.ts
 import { BaseModule } from '../base.module';
 import { DataForSEOClient } from '../../client/dataforseo.client';
 import { YourTool } from './tools/your-tool.tool';
@@ -244,7 +334,7 @@ export class YourModuleNameModule extends BaseModule {
 }
 ```
 
-3. Register your module in `src/config/modules.config.ts`:
+3. Register your module in `src/core/config/modules.config.ts`:
 ```typescript
 export const AVAILABLE_MODULES = [
   'SERP',
@@ -259,7 +349,7 @@ export const AVAILABLE_MODULES = [
 ] as const;
 ```
 
-4. Initialize your module in `src/index.ts`:
+4. Initialize your module in `src/main/index.ts`:
 ```typescript
 if (isModuleEnabled('YOUR_MODULE_NAME', enabledModules)) {
   modules.push(new YourModuleNameModule(dataForSEOClient));

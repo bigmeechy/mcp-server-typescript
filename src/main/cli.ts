@@ -39,15 +39,10 @@ if (mode === 'http') {
         stdio: 'inherit',
         env: { ...process.env }
     });
-} else if (mode === 'local') {
+} else {
     const localServer = join(__dirname, 'index.js');
     spawn('node', [localServer, ...childArgs], { 
         stdio: 'inherit',
         env: { ...process.env }
     });
-} else {
-    console.error('Invalid mode. Use "local", "http", or "sse"');
-    console.error('Usage: node cli.js [mode] [--configuration path/to/config.json]');
-    console.error('Example: node cli.js http --configuration field-config.json');
-    process.exit(1);
 }

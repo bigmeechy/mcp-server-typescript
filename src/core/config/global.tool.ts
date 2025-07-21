@@ -10,9 +10,12 @@ export type GlobalToolConfig = z.infer<typeof GlobalToolConfigSchema>;
 
 // Parse config from environment variables
 export function parseGlobalToolConfig(): GlobalToolConfig {
+  const fullResponseEnv = process.env.DATAFORSEO_FULL_RESPONSE as string;
+  const debugEnv = process.env.DEBUG as string;
+  
   const config = {
-    fullResponse: process.env.DATAFORSEO_FULL_RESPONSE === 'true' ? true : false,
-    debug: process.env.DEBUG === 'true' ? true : false
+    fullResponse: fullResponseEnv === 'true',
+    debug: debugEnv === 'true'
   };
   
   return GlobalToolConfigSchema.parse(config);
